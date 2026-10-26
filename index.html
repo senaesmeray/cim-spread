@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Çim Yayılma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --lichen:#E8F0E6;
+  --ink:#1B2E1E;
+  --parquet:#D4C5A9;
+  --parquet-2:#C8B89A;
+  --walnut:#4A3B32;
+  --madder:#3A7D44;
+  --madder-2:#25532B;
+  --brass:#F4A261;
+  --rule:rgba(27,46,30,.16);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--lichen);color:var(--ink);
+  font-family:'Space Grotesk',system-ui,sans-serif;
+  display:flex;justify-content:center;padding:14px 12px 22px;
+  -webkit-tap-highlight-color:transparent}
+.app{width:100%;max-width:400px;display:flex;flex-direction:column;gap:11px}
+
+.masthead{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.wordmark{font-family:'Big Shoulders Display',sans-serif;font-weight:800;
+  font-size:34px;line-height:.82;letter-spacing:.02em;text-transform:uppercase}
+.wordmark span{display:block;font-family:'Space Mono',monospace;font-weight:400;
+  font-size:9px;letter-spacing:.18em;opacity:.55;margin-top:6px;text-transform:uppercase}
+.hud{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-align:right;opacity:.75}
+.hud b{display:block;font-size:26px;letter-spacing:-.02em;opacity:1;line-height:1}
+.hud.low b{color:var(--madder)}
+
+.meter{display:flex;align-items:center;gap:9px}
+.track{flex:1;height:12px;background:rgba(22,33,31,.09);position:relative;overflow:hidden;border-radius:1px}
+.fill{position:absolute;inset:0 auto 0 0;width:0%;
+  background:repeating-linear-gradient(45deg,var(--madder) 0 5px,var(--madder-2) 5px 10px);
+  transition:width 200ms ease}
+.pct{font-family:'Space Mono',monospace;font-weight:700;font-size:14px;min-width:46px;text-align:right}
+
+.room{display:grid;gap:0;padding:4px;aspect-ratio:1;width:100%}
+.sq{position:relative;background:var(--parquet);overflow:hidden;
+  display:grid;place-items:center;cursor:pointer;
+  box-shadow:inset 0 0 0 .5px rgba(74,59,50,.14)}
+.sq::before{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 12px)}
+.sq.alt{background:var(--parquet-2)}
+.sq.void{visibility:hidden;pointer-events:none;background:transparent!important;box-shadow:none!important}
+.sq.void::before{display:none}
+
+.sq.furniture{background:transparent;cursor:default;box-shadow:none}
+.sq.furniture::before{inset:8%;border-radius:5px;background:
+  repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 7px),var(--walnut);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.12),0 3px 0 rgba(0,0,0,.25)}
+
+/* çim: hücreler arası dikiş yok, tek parça alan gibi görünür */
+.sq.carpet{box-shadow:none;background:
+  radial-gradient(circle at 30% 35%,rgba(255,255,255,.13) 0 1px,transparent 1.6px) 0 0/7px 7px,
+  radial-gradient(circle at 70% 60%,rgba(0,40,10,.22) 0 1px,transparent 1.8px) 2px 3px/9px 9px,
+  linear-gradient(160deg,#4FA144,#3A8A35)}
+.sq.carpet::before{display:none}
+/* dış kenar çerçevesi: sadece çim olmayan komşu tarafında */
+.sq.carpet::after{content:"";position:absolute;inset:0;pointer-events:none;
+  border:0 solid #1F4D22}
+.sq.carpet.et::after{border-top-width:3px}
+.sq.carpet.eb::after{border-bottom-width:3px}
+.sq.carpet.el::after{border-left-width:3px}
+.sq.carpet.er::after{border-right-width:3px}
+.sq.carpet.ctl::before,.sq.carpet.ctr::before,.sq.carpet.cbl::before,.sq.carpet.cbr::before{
+  display:block;content:"";position:absolute;width:3px;height:3px;background:#1F4D22;z-index:2}
+.sq.carpet.ctl::before{top:0;left:0}.sq.carpet.ctr::before{top:0;right:0;left:auto}
+.sq.carpet.cbl::before{bottom:0;left:0;top:auto}.sq.carpet.cbr::before{bottom:0;right:0;top:auto;left:auto}
+
+/* hazır fişek */
+.sq .fwi{width:62%;height:62%;position:relative;z-index:3;filter:drop-shadow(0 2px 1px rgba(0,0,0,.3))}
+.sq.chain{box-shadow:inset 0 0 0 3px var(--brass)}
+.sq.fresh{animation:lay 220ms ease}
+@keyframes lay{from{transform:scale(.5);opacity:.15}}
+
+/* preview */
+.sq.ghost{background:repeating-linear-gradient(45deg,rgba(58,125,68,.42) 0 6px,rgba(37,83,43,.42) 6px 12px);
+  box-shadow:inset 0 0 0 2px rgba(244,162,97,.85)}
+.sq.dead::after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;
+  background:rgba(244,162,97,.65);inset:auto}
+.sq.spark{box-shadow:inset 0 0 0 3px var(--brass)}
+.sq.spark svg{width:52%;height:52%;position:relative;z-index:3}
+.sq:focus-visible{outline:2px solid var(--brass);outline-offset:-2px;z-index:4}
+@media (hover:hover){.sq:not(.furniture):not(.void):hover{filter:brightness(1.06)}}
+
+.hint{font-family:'Space Mono',monospace;font-size:10.5px;min-height:15px;opacity:.7}
+.hint b{color:var(--madder)}
+
+.controls{display:flex;gap:8px}
+.controls button{flex:1}
+button{font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:13px;
+  border:1px solid var(--ink);background:transparent;color:var(--ink);
+  padding:10px 12px;border-radius:2px;cursor:pointer;transition:background 120ms,color 120ms}
+button:hover:not(:disabled){background:var(--ink);color:var(--lichen)}
+button:disabled{opacity:.32;cursor:default}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button.solid{background:var(--ink);color:var(--lichen)}
+button.solid:hover:not(:disabled){background:var(--madder);border-color:var(--madder)}
+.tiny{font-size:11px;padding:8px 10px}
+
+.rule{font-size:11.5px;line-height:1.4;opacity:.72;
+  border-left:2px solid var(--madder);padding-left:9px}
+
+.scrim{position:fixed;inset:0;background:rgba(22,33,31,.55);display:none;
+  align-items:flex-end;justify-content:center;padding:14px;z-index:20}
+.scrim.on{display:flex}
+.sheet{background:var(--lichen);border:1px solid var(--ink);border-radius:3px;
+  width:100%;max-width:400px;padding:18px;animation:rise 200ms cubic-bezier(.3,.9,.4,1)}
+@keyframes rise{from{transform:translateY(18px);opacity:0}}
+.sheet h2{font-family:'Big Shoulders Display',sans-serif;font-weight:800;
+  font-size:30px;line-height:1;text-transform:uppercase;margin-bottom:6px}
+.sheet p{font-size:13px;line-height:1.45;margin-bottom:12px}
+.stats{font-family:'Space Mono',monospace;font-size:10.5px;line-height:1.7;
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding:8px 0;margin-bottom:14px}
+.stats span{float:right;font-weight:700}
+.tag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;opacity:.55;margin-bottom:8px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <h1 class="wordmark">Çim Bahçesi<span>pixel art · 3 seviye</span></h1>
+    <div class="hud" id="hud"><b id="left">0</b>fişek</div>
+  </header>
+
+  <div class="meter">
+    <div class="track"><div class="fill" id="fill"></div></div>
+    <div class="pct" id="pct">0%</div>
+  </div>
+
+  <div class="room" id="room"></div>
+
+  <p class="hint" id="hint">Bir kareye dokun, önizlemeyi gör.</p>
+
+  <div class="controls">
+    <button class="solid" id="fire" disabled>Patlat</button>
+    <button id="cancel" disabled>Vazgeç</button>
+  </div>
+  <div class="controls">
+    <button class="tiny" id="undo" disabled>Geri al</button>
+    <button class="tiny" id="retry">Bahçeyi yenile</button>
+    <button class="tiny" id="next">Sonraki bahçe</button>
+  </div>
+
+  <p class="rule">Ateşlenen kol, <b>yeşil çime değdiği andan sonrasını</b> çimler. Çime hiç değmeyen kol boşa gider. Fişeğin konduğu kare <b>yanında çim varsa</b> her zaman çimlenir; çim kopuk bir yere asla uzanmaz. Çim <b>hazır fişeğe</b> ulaşınca o da patlar.</p>
+</div>
+
+<div class="scrim" id="scrim">
+  <div class="sheet">
+    <p class="tag" id="sheetTag">tur sonu</p>
+    <h2 id="sheetTitle">Başlık</h2>
+    <p id="sheetBody">Metin</p>
+    <div class="stats" id="sheetStats"></div>
+    <div class="controls">
+      <button class="solid" id="sheetPrimary">Devam</button>
+      <button id="sheetSecondary">Yeniden</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const LEVELS = [
+  { n: 6, min: 3, budget: 6, note: 'Kolay · Ev', fw: [[3,3]],
+    rows: ['  ..  ',' .... ','......',' o... ',' .... ',' .... '] },
+  { n: 9, min: 5, budget: 8, note: 'Orta · Kuş', fw: [[2,5],[3,1]],
+    rows: ['   ..    ','  .o..   ',' .#...   ','.......  ',' ........','  .......','   ......','    ...  ','    . .  '] },
+  { n: 8, min: 5, budget: 8, note: 'Zor · Balık', fw: [[3,0],[3,7]],
+    rows: ['        ','   ...  ',' ..o.. .','........','.#......','........',' ..... .','   ...  '] }
+];
+
+const PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16" stroke="#3A2708" stroke-width="3.6" stroke-linecap="round"/></svg>';
+/* hazır fişek ikonu: kırmızı artı, mavi göbek */
+const FW = '<svg class="fwi" viewBox="0 0 40 40" aria-hidden="true">' +
+  '<g fill="#D8463B" stroke="#7A1E17" stroke-width="1.6">' +
+  '<path d="M20 2l5 9h-10z"/><path d="M20 38l-5-9h10z"/><path d="M2 20l9-5v10z"/><path d="M38 20l-9 5V15z"/></g>' +
+  '<circle cx="20" cy="20" r="10.5" fill="#F3EBDD" stroke="#7A1E17" stroke-width="1.6"/>' +
+  '<circle cx="20" cy="20" r="7.5" fill="#2F6DB5"/>' +
+  '<path d="M20 15.5v9M15.5 20h9" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>';
+const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];
+
+let L, N, cells, budget, over, busy, preview, history, blasts,
+  level = 0, startedAt = 0, continueUsed = false, continueShown = false, continues = 0;
+
+const room = document.getElementById('room');
+const hintEl = document.getElementById('hint');
+const leftEl = document.getElementById('left');
+const hudEl = document.getElementById('hud');
+const fillEl = document.getElementById('fill');
+const pctEl = document.getElementById('pct');
+const fireBtn = document.getElementById('fire');
+const cancelBtn = document.getElementById('cancel');
+const undoBtn = document.getElementById('undo');
+const scrim = document.getElementById('scrim');
+
+const at = (r,c) => cells[r*N + c];
+const inside = (r,c) => r >= 0 && r < N && c >= 0 && c < N;
+const keyOf = c => c.r + ',' + c.c;
+
+function build(){
+  L = LEVELS[level]; N = L.n;
+  budget = L.budget; over = false; busy = false; preview = null;
+  history = []; blasts = 0;
+  continueUsed = false; continueShown = false; continues = 0; startedAt = Date.now();
+
+  cells = []; room.innerHTML = '';
+  room.style.gridTemplateColumns = 'repeat(' + N + ',1fr)';
+  const fwSet = new Set((L.fw || []).map(([r,c]) => r + ',' + c));
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const ch = L.rows[r][c];
+      const cell = {
+        r, c,
+        void: ch === ' ',
+        furniture: ch === '#',
+        carpet: ch === 'o',
+        fw: fwSet.has(r + ',' + c),
+        el: document.createElement('div')
+      };
+      if(!cell.void){
+        cell.el.tabIndex = 0;
+        cell.el.setAttribute('role','button');
+      }
+      room.appendChild(cell.el);
+      cells.push(cell);
+    }
+  }
+  hint(L.note + (L.fw && L.fw.length ? ' — çim hazır fişeğe ulaşınca o da patlar.' : ''));
+  paint(); meter(); hud();
+}
+
+/* Tek bir artı patlaması. isG(cell): o anda çim mi? */
+function compute(p, isG){
+  const laid = new Set(), dead = new Set();
+  const pG = isG(p);
+  DIRS.forEach(([dr,dc]) => {
+    let charged = pG;
+    let r = p.r + dr, c = p.c + dc;
+    while(inside(r,c)){
+      const cell = at(r,c);
+      if(cell.furniture || cell.void) break;
+      const key = r + ',' + c;
+      if(isG(cell) || laid.has(key)) charged = true;
+      else if(charged) laid.add(key);
+      else dead.add(key);
+      r += dr; c += dc;
+    }
+  });
+  // konduğu kare, sadece bir şey çimlendiriyorsa VE yanında (4 yön) zaten çim varsa çimlenir.
+  // Böylece çim, çimle bağlantısı olmayan bir yere asla uzanmaz.
+  const touches = DIRS.some(([dr,dc]) => {
+    const r = p.r + dr, c = p.c + dc;
+    if(!inside(r,c)) return false;
+    const n = at(r,c);
+    return !n.void && !n.furniture && isG(n);
+  });
+  // yanında çim varsa konduğu kare HER ZAMAN çimlenir (çimle çevrili tek delik de kapatılabilsin)
+  if(!pG && touches) laid.add(keyOf(p));
+  return {laid, dead};
+}
+
+/* Oyuncunun fişeği + zincirleme hazır fişekler. Dalga dalga sonuç döner. */
+function simulate(origin){
+  const grass = new Set(cells.filter(c => c.carpet).map(keyOf));
+  const isG = c => grass.has(keyOf(c));
+  const waves = [], queue = [origin];
+  let dead = null;
+  while(queue.length){
+    const p = queue.shift();
+    const res = compute(p, isG);
+    if(!dead) dead = res.dead;
+    if(!res.laid.size && p !== origin) continue;
+    waves.push({p, laid: res.laid});
+    res.laid.forEach(k => {
+      grass.add(k);
+      const [r,c] = k.split(',').map(Number), cell = at(r,c);
+      if(cell.fw && cell !== origin) queue.push(cell);
+    });
+  }
+  const all = new Set();
+  waves.forEach(w => w.laid.forEach(k => all.add(k)));
+  return {waves, laid: all, dead: dead || new Set(), chain: waves.slice(1).map(w => w.p)};
+}
+
+function paint(){
+  const G = (r,c) => inside(r,c) && at(r,c).carpet;
+  cells.forEach((c,i) => {
+    if(c.void){
+      c.el.className = 'sq void';
+      return;
+    }
+    const k = ['sq'];
+    if((c.r + c.c) % 2) k.push('alt');
+    if(c.furniture) k.push('furniture');
+    if(c.carpet){
+      k.push('carpet');
+      const t = G(c.r-1,c.c), b = G(c.r+1,c.c), l = G(c.r,c.c-1), rr = G(c.r,c.c+1);
+      if(!t) k.push('et'); if(!b) k.push('eb'); if(!l) k.push('el'); if(!rr) k.push('er');
+      // iç köşe çentikleri
+      if(t && l && !G(c.r-1,c.c-1)) k.push('ctl');
+      if(t && rr && !G(c.r-1,c.c+1)) k.push('ctr');
+      if(b && l && !G(c.r+1,c.c-1)) k.push('cbl');
+      if(b && rr && !G(c.r+1,c.c+1)) k.push('cbr');
+    }
+    if(c.fresh) k.push('fresh');
+    if(preview){
+      const key = keyOf(c);
+      if(preview.laid.has(key)) k.push('ghost');
+      else if(preview.dead.has(key)) k.push('dead');
+      if(preview.p === c) k.push('spark');
+      if(preview.chain.includes(c)) k.push('chain');
+    }
+    c.el.className = k.join(' ');
+    c.el.innerHTML = (preview && preview.p === c) ? PLUS : (c.fw && !c.carpet ? FW : '');
+    c.el.setAttribute('aria-label',
+      c.furniture ? 'Engelli Alan' : (c.carpet ? 'Çim' : (c.fw ? 'Hazır fişek' : 'Boş Toprak')));
+  });
+  const can = !!(preview && preview.laid.size && !busy && !over);
+  fireBtn.disabled = !can;
+  fireBtn.textContent = preview && preview.laid.size ? 'Patlat  +' + preview.laid.size : 'Patlat';
+  cancelBtn.disabled = !preview || busy || over;
+  undoBtn.disabled = !history.length || busy || over;
+}
+
+function floors(){ return cells.filter(c => !c.furniture && !c.void); }
+function meter(){
+  const f = floors(), done = f.filter(c => c.carpet).length;
+  const p = f.length ? Math.round(done/f.length*100) : 0;
+  fillEl.style.width = p + '%'; pctEl.textContent = p + '%';
+  return p;
+}
+function hud(){ leftEl.textContent = budget; hudEl.classList.toggle('low', budget <= 1); }
+function hint(t){ hintEl.innerHTML = t; }
+
+function tap(cell){
+  if(busy || over || cell.void) return;
+  if(cell.furniture){ hint('Engelli alan. Fişek buraya konmaz.'); return; }
+  if(preview && preview.p === cell){ fire(); return; }
+  if(budget <= 0){ hint('Fişek kalmadı.'); return; }
+  const res = simulate(cell);
+  preview = {p: cell, laid: res.laid, dead: res.dead, waves: res.waves, chain: res.chain};
+  paint();
+  if(res.laid.size === 0){
+    hint('Bu fişeğin hiçbir kolu çime değmiyor — <b>boşa gider</b>.');
+  } else {
+    const ch = res.chain.length ? ' <b>' + res.chain.length + ' hazır fişek</b> zincirleme patlar.' : '';
+    hint(res.laid.size + ' kare çimlenir.' + ch + ' Tekrar dokun veya Patlat.');
+  }
+}
+
+function fire(){
+  if(!preview || !preview.laid.size || busy || over) return;
+  busy = true; budget--; blasts++;
+  history.push({snapshot: cells.map(c => c.carpet), budget: budget + 1});
+  const waves = preview.waves.map(w => [...w.laid].map(k => {
+    const [r,c] = k.split(',').map(Number);
+    return {cell: at(r,c), d: Math.abs(r-w.p.r) + Math.abs(c-w.p.c)};
+  }).sort((a,b) => a.d - b.d));
+  const total = waves.reduce((a,w) => a + w.length, 0), chained = waves.length - 1;
+  hint('+' + total + ' kare çimlendi' + (chained ? ' (' + chained + ' zincir patlama)' : '') + '.');
+  preview = null; paint(); hud();
+
+  let wi = 0, i = 0;
+  const step = () => {
+    if(wi < waves.length && i >= waves[wi].length){ wi++; i = 0; setTimeout(step, 140); return; }
+    if(wi >= waves.length){
+      busy = false;
+      cells.forEach(c => c.fresh = false);
+      paint(); meter(); check();
+      return;
+    }
+    const list = waves[wi], d = list[i].d;
+    while(i < list.length && list[i].d === d){
+      list[i].cell.carpet = true; list[i].cell.fresh = true; i++;
+    }
+    paint(); meter();
+    setTimeout(step, 70);
+  };
+  setTimeout(step, 50);
+}
+
+function undo(){
+  if(!history.length || busy || over) return;
+  const h = history.pop();
+  cells.forEach((c,i) => { c.carpet = h.snapshot[i]; c.fresh = false; });
+  budget = h.budget; blasts--; preview = null;
+  hud(); paint(); meter(); hint('Son patlatma geri alındı.');
+}
+
+function check(){
+  if(over) return;
+  const rest = floors().filter(c => !c.carpet).length;
+  if(rest === 0){ finish(true, 'Bahçe kaplandı.', L.note); return; }
+  if(budget <= 0){
+    // her tıkanışta teklif: alırsan devam, almazsan fail
+    continueShown = true; offer(rest);
+  }
+}
+
+const sTag = document.getElementById('sheetTag'), sTitle = document.getElementById('sheetTitle'),
+      sBody = document.getElementById('sheetBody'), sStats = document.getElementById('sheetStats'),
+      sPrimary = document.getElementById('sheetPrimary'), sSecondary = document.getElementById('sheetSecondary');
+function openSheet(){ scrim.classList.add('on'); sPrimary.focus(); }
+function closeSheet(){ scrim.classList.remove('on'); }
+
+function offer(rest){
+  sTag.textContent = 'fişek bitti';
+  sTitle.textContent = rest + ' kare açıkta';
+  sBody.textContent = continues
+    ? 'Yine tıkandın. ' + continues + ' kez fişek aldın — bir daha alırsan devam edebilirsin.'
+    : 'Fişeğin bitti ama bahçe tamamlanmadı. Fişek alıp devam edebilirsin.';
+  sStats.innerHTML = 'Kaplama <span>' + meter() + '%</span><br>Açık kare <span>' + rest + '</span>';
+  sPrimary.textContent = '+2 fişek al';
+  sSecondary.textContent = 'Vazgeç (fail)';
+  sPrimary.onclick = () => { continueUsed = true; continues++; budget += 2; hud(); paint(); closeSheet(); hint('+2 fişek.'); };
+  sSecondary.onclick = () => { closeSheet(); finish(false, 'Fişek bitti.', rest + ' kare açıkta kaldı.'); };
+  openSheet();
+}
+
+function finish(win, title, body){
+  over = true; busy = false; preview = null; paint();
+  const secs = Math.max(1, Math.round((Date.now()-startedAt)/1000));
+  sTag.textContent = 'bahçe ' + (level+1) + (win ? ' tamam' : ' başarısız');
+  sTitle.textContent = title; sBody.textContent = body;
+  sStats.innerHTML =
+    'Kaplama <span>' + meter() + '%</span>' +
+    '<br>Kullanılan fişek <span>' + blasts + '</span>' +
+    '<br>En iyi çözüm <span>' + L.min + ' fişek</span>' +
+    '<br>Süre <span>' + secs + ' sn</span>' +
+    '<br>Continue teklifi <span>' + (continueShown ? (continues ? continues + ' kez alındı' : 'reddedildi') : 'çıkmadı') + '</span>';
+  const last = level >= LEVELS.length - 1;
+  sPrimary.textContent = win ? (last ? 'Baştan oyna' : 'Sonraki bahçe') : 'Yeniden dene';
+  sSecondary.textContent = win ? 'Bu bahçeyi tekrar' : 'Bahçeyi atla';
+  sPrimary.onclick = () => { closeSheet(); if(win) level = last ? 0 : level+1; build(); };
+  sSecondary.onclick = () => { closeSheet(); if(!win && level < LEVELS.length-1) level++; build(); };
+  setTimeout(openSheet, win ? 560 : 380);
+}
+
+room.addEventListener('click', e => {
+  const el = e.target.closest('.sq'); if(!el) return;
+  const cell = cells.find(c => c.el === el); if(cell) tap(cell);
+});
+room.addEventListener('keydown', e => {
+  if(e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest('.sq'); if(!el) return;
+  e.preventDefault();
+  const cell = cells.find(c => c.el === el); if(cell) tap(cell);
+});
+fireBtn.onclick = fire;
+cancelBtn.onclick = () => { preview = null; paint(); hint('İptal edildi.'); };
+undoBtn.onclick = undo;
+document.getElementById('retry').onclick = () => build();
+document.getElementById('next').onclick = () => { level = (level+1) % LEVELS.length; build(); };
+// teklif açıkken dışarı tıklayıp kaçmak yok: ya fişek al ya fail
+scrim.addEventListener('click', e => { if(e.target === scrim && over) closeSheet(); });
+
+build();
+})();
+</script>
+</body>
+</html>
